@@ -1,0 +1,477 @@
+#!/bin/bash -e
+
+# Bashistrano - A bash deployment automation tool
+
+# Copyright (c) 2018 Supercharge
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+VERSION='1.0.0'
+
+# --------------------
+# MAIN
+# --------------------
+main() {
+
+  # print usage information
+  usage() {
+    echo ""
+    echo "Usage:  ./bashistrano COMMAND"
+    echo ""
+    echo "A bash deployment automation tool"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help     Display this help message"
+    echo "  -v, --version  Print version information and quit"
+    echo ""
+    echo "Commands:"
+    echo "  deploy           Deploys the application end-to-end"
+    echo "  only:prepare     Prepares the environment for deployment"
+    echo "  only:deliver     Delivers from an already prepared environment"
+    echo ""
+    echo "Run './bashistrano COMMAND --help' for more information on a command"
+  }
+
+  # print version information
+  version() {
+    echo "bashistrano version ${VERSION}"
+  }
+
+  # display wrong command
+  invalid_command() {
+    echo "bashistrano: '${1}' is not a bashistrano command."
+    echo "See './bashistrano --help'"
+  }
+
+  local command=$1
+
+  case $command in
+  -v|--version)
+    version
+    ;;
+  -h|--help|'')
+    usage
+    ;;
+  deploy)
+    shift
+    deploy $@
+    ;;
+  only:prepare)
+    shift
+    prepare $@
+    ;;
+  only:deliver)
+    shift
+    deliver $@
+    ;;
+  *)
+    invalid_command $command
+  esac
+}
+
+# --------------------
+# DEPLOY
+# --------------------
+deploy() {
+
+  # print usage information
+  usage() {
+    echo ""
+    echo "Usage:  ./bashistrano deploy [OPTIONS] STAGE VERSION"
+    echo ""
+    echo "Deploys the application with given stage and version."
+    echo ""
+    echo "Options:"
+    echo "  -h, --help  Display this help message"
+    echo ""
+  }
+
+  local stage=$1
+  local version=$2
+
+  case $stage in
+  -h|--help|'')
+    usage
+    ;;
+  *)
+    load_config
+
+    phase_deploy
+  esac
+}
+
+# --------------------
+# PREPARE
+# --------------------
+prepare() {
+
+  # print usage information
+  usage() {
+    echo ""
+    echo "Usage:  ./bashistrano prepare [OPTIONS] STAGE VERSION"
+    echo ""
+    echo "Prepares the environment for deployment with the following steps:"
+    echo "  * store and re-tag docker images"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help  Display this help message"
+    echo ""
+  }
+
+  local stage=$1
+  local version=$2
+
+  case $stage in
+  -h|--help|'')
+    usage
+    ;;
+  *)
+    load_config
+
+    phase_prepare
+  esac
+}
+
+# --------------------
+# DELIVER
+# --------------------
+deliver() {
+
+  # print usage information
+  usage() {
+    echo ""
+    echo "Usage:  ./bashistrano deliver [OPTIONS] STAGE VERSION"
+    echo ""
+    echo "Delivers the application without the preparation steps."
+    echo ""
+    echo "Options:"
+    echo "  -h, --help  Display this help message"
+    echo ""
+  }
+
+  local stage=$1
+  local version=$2
+
+  case $stage in
+  -h|--help|'')
+    usage
+    ;;
+  *)
+    load_config
+
+    phase_deliver
+  esac
+}
+
+# --------------------
+# PHASES
+# --------------------
+
+phase_deploy() {
+  trigger 'before:deploy'
+
+  phase_prepare
+  phase_deliver
+
+  trigger 'after:deploy'
+}
+
+phase_prepare() {
+  trigger 'before:prepare'
+
+  clean_local
+  pull_images
+
+  trigger 'after:prepare'
+}
+
+phase_deliver() {
+  trigger 'before:deliver'
+
+  clean_remote
+  push_images
+  push_code
+  publish_release
+  cleanup_releases
+  log_revision
+
+  trigger 'after:deliver'
+}
+
+# --------------------
+# STEPS
+# --------------------
+
+# empty tmp directories
+clean_local() {
+  trigger 'before:clean_local'
+
+  run_locally "rm -rf ${local_tmp_path}"
+
+  trigger 'after:clean_local'
+}
+
+clean_remote() {
+  trigger 'before:clean_remote'
+
+  run_remotely "rm -rf ${tmp_path}"
+
+  trigger 'after:clean_remote'
+}
+
+# load and override configs
+load_config() {
+  trigger 'before:load_config'
+
+  # load global config
+  run_locally "source ./config.sh"
+
+  # override with stage specific
+  run_locally "source ./config/${stage}.sh"
+
+  # display config info
+  echo -e ""
+  echo -e "----------------------------- bashistrano: ${VERSION}"
+  echo -e "Configuration"
+  echo -e ""
+  echo -e "  Parameters:"
+  echo -e "    stage          = ${stage}"
+  echo -e "    version        = ${version}"
+  echo -e ""
+  echo -e "    application    = ${application}"
+  echo -e "    deploy_to      = ${deploy_to}"
+  echo -e "    keep_releases  = ${keep_releases}"
+  echo -e "    servers = ("
+  for server in ${servers[@]}; do echo "      ${server}"; done
+  echo -e "    )"
+  echo -e "    images = ("
+  for ((i=0;i<${#images[@]}/2;++i)); do echo -e "      ${images[$i*2]} => ${images[$i*2+1]}"; done
+  echo -e "    }"
+  echo -e "------------------------------------------------"
+  echo -e ""
+
+  # set global variables
+  release_id=`date "+%Y%m%d-%H%M%S"`
+  current_path="${deploy_to}/current"
+  release_path="${deploy_to}/releases/${release_id}"
+  tmp_path="${deploy_to}/tmp"
+  local_tmp_path="./tmp/${stage}/${version}"
+
+  trigger 'after:load_config'
+}
+
+# store images
+pull_images() {
+  trigger 'before:pull_images'
+
+  local length=$((${#images[@]}/3))
+  local dir="${local_tmp_path}/images"
+
+  # re-download images
+  run_locally "mkdir -p ${dir}"
+
+  # download and store images
+  for ((i=0;i<${#images[@]}/2;++i)); do
+    local tag_from=${images[$i*2]}
+    local tag_to=${images[$i*2+1]}
+
+    run_locally "docker pull ${tag_from}"
+    run_locally "docker tag ${tag_from} ${tag_to}"
+    run_locally "docker save ${tag_to} -o ${dir}/image-${i}.tar"
+    run_locally "docker rmi ${tag_from} ${tag_to}"
+  done
+
+  trigger 'after:pull_images'
+}
+
+# upload and push images to remote
+push_images() {
+  trigger 'before:push_images'
+
+  local tmp_images_path="${tmp_path}/${release_id}/images"
+
+  # upload images
+  run_remotely "mkdir -p ${tmp_images_path}"
+  copy_to_remote "${local_tmp_path}/images/*" $tmp_images_path
+
+  # load to docker registry
+  for ((i=0;i<${#images[@]}/2;++i)); do
+    tag_from=${images[$i*2]}
+    tag_to=${images[$i*2+1]}
+
+    run_remotely "docker load -i ${tmp_images_path}/image-${i}.tar"
+    # run_remotely "docker push $tag_to" TODO: need a switch
+  done
+
+  trigger 'after:push_images'
+}
+
+# push code as release directory
+push_code() {
+  trigger 'before:push_code'
+
+  local tmp_code_path="${tmp_path}/${release_id}/code"
+
+  # upload new code
+  run_remotely "mkdir -p ${tmp_code_path}"
+  copy_to_remote "./stages/${stage}/." $tmp_code_path
+
+  # create release directory and copy code
+  run_remotely "mkdir -p ${release_path}"
+  run_remotely "cp -R ${tmp_code_path}/. ${release_path}"
+
+  trigger 'after:push_code'
+}
+
+# publish new code as latest
+publish_release() {
+  trigger 'before:publish_release'
+
+  run_remotely "ln -nfs ${release_path} ${current_path}"
+
+  trigger 'after:publish_release'
+}
+
+# only keep N last releases
+cleanup_releases() {
+  trigger 'before:cleanup_releases'
+
+  if [ $keep_releases != 0 ]; then
+    run_remotely "cd ${deploy_to}/releases && ls -r | grep -v '/$' | tail -n +$((${keep_releases}+1)) | xargs -I {} rm -rf -- {}"
+  fi
+
+  trigger 'after:cleanup_releases'
+}
+
+# store revision info in revisions.log file
+log_revision() {
+  trigger 'before:log_revision'
+
+  run_remotely "echo '${version} deployed as ${release_id} by $(whoami)' >> ${deploy_to}/revisions.log"
+
+  trigger 'after:log_revision'
+}
+
+# --------------------
+# UTILS
+# --------------------
+
+# check if function exists
+function_exists() {
+  declare -f -F $1 > /dev/null
+  return $?
+}
+
+# return formatted format if hook exists
+format_function_exists() {
+  function_exists $1 && echo "+" || echo " ``"
+}
+
+# trigger hook if exists
+trigger() {
+  # trigger global hook if exists
+  local name=$1
+  if function_exists $name; then
+    echo -e "[${PURPLE}hook${NC}] Triggering: ${CYAN}${name}${NC}"
+    $name
+  fi
+
+  # trigger stage specific hook if exists
+  local stageName="${name}:${stage}"
+  if function_exists $stageName; then
+    echo -e "[${PURPLE}hook${NC}] Triggering: ${CYAN}${stageName}${NC}"
+    $stageName
+  fi
+}
+
+# open a tunnel and run something there
+run_with_tunnel() {
+  local local_port=$1
+  local server=$2
+  local remote_addr=$3
+  local command=$4
+
+  # open tunnel
+  run_locally "ssh -M -S tunnel -fnNT -L $local_port:$remote_addr $server"
+
+  # run command
+  run_locally $comand
+
+  # close tunnel
+  run_locally "ssh -S tunnel -O exit $server"
+}
+
+# run command locally
+run_locally() {
+  local command=$@
+
+  echo -e "[${GREEN}localhost${NC}] Running: ${YELLOW}${command}${NC}"
+  $@
+}
+
+# run command on all remote servers
+run_remotely() {
+  local command=$1
+
+  for server in ${servers[@]}; do
+    echo -e "[${BLUE}${server}${NC}] Running: ${YELLOW}${command}${NC}"
+
+    if ssh_pass_provided; then
+      sshpass -p $SSH_PASS ssh $server $command
+    else
+      ssh $server $command
+    fi
+  done
+}
+
+# copy files to every remote server
+copy_to_remote() {
+  local file=$1
+  local remote_path=$2
+
+  for server in ${servers[@]}; do
+    echo -e "[${BLUE}$server${NC}] Copying: ${YELLOW}${file}${NC} to ${YELLOW}${remote_path}${NC}"
+
+    if ssh_pass_provided; then
+      sshpass -p $SSH_PASS scp -r $file $server:$remote_path
+    else
+      scp -r $file $server:$remote_path
+    fi
+  done
+}
+
+# check if SSH password is supplied as env var
+ssh_pass_provided() {
+  if [[ -z ${SSH_PASS+x} || $SSH_PASS == '' ]]; then return 1; else return 0; fi
+}
+
+# color definitiosn
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+PURPLE='\033[0;35m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+GREY='\033[0;37m'
+NC='\033[0m'
+
+# start main
+main $@
