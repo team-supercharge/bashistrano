@@ -114,7 +114,9 @@ images=(
 )
 ```
 
-The first value is the remote Docker image which need to be downloaded (possibly from a private registry). The  second value is the desired tag which will be used on the remote servers
+The first value is the remote Docker image which need to be downloaded (possibly from a private registry). The second value is the desired tag which will be used on the remote servers.
+
+Bashistrano is matchint local and remote Docker image IDs and performs uploading only if necessary.
 
 ## Example configuration
 

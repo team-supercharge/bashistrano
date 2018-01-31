@@ -295,7 +295,7 @@ pull_images() {
     run_locally "docker pull ${tag_from}"
     run_locally "docker tag ${tag_from} ${tag_to}"
     run_locally "docker save ${tag_to} -o ${dir}/image-${i}.tar"
-    run_locally "docker rmi ${tag_from} ${tag_to}"
+    run_locally "docker rmi ${tag_to}"
   done
 
   trigger 'after:pull_images'
@@ -309,15 +309,23 @@ push_images() {
 
   # upload images
   run_remotely "mkdir -p ${tmp_images_path}"
-  copy_to_remote "${local_tmp_path}/images/*" $tmp_images_path
 
   # load to docker registry
   for ((i=0;i<${#images[@]}/2;++i)); do
     tag_from=${images[$i*2]}
     tag_to=${images[$i*2+1]}
 
-    run_remotely "docker load -i ${tmp_images_path}/image-${i}.tar"
-    # run_remotely "docker push $tag_to" TODO: need a switch
+    run_locally "docker images -q ${tag_from}"
+    local local_image_sha=$output
+
+    run_remotely "docker images -q ${tag_to}"
+    local remote_image_sha=$output
+
+    if [[ $local_image_sha != $remote_image_sha ]]; then
+      copy_to_remote "${local_tmp_path}/images/image-${i}.tar" "$tmp_images_path/image-${i}.tar"
+      run_remotely "docker load -i ${tmp_images_path}/image-${i}.tar"
+      # run_remotely "docker push $tag_to" TODO: need a switch
+    fi
   done
 
   trigger 'after:push_images'
