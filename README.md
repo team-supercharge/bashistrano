@@ -258,6 +258,7 @@ In addition to the parameters you've explicitly set in the configuration the fol
 | `$current_path` | **remote path** for the currently active release |
 | `$tmp_path` | **remote path** for temporary files (cleaned on `clean_remote` step)
 | `$local_tmp_path` | **local path** for temporary files (cleaned on `clean_local` step)
+| `$output` | captured standard output of the last invoked function (see [Functions](#functions)) |
 
 ## Functions
 

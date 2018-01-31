@@ -240,13 +240,11 @@ clean_remote() {
 
 # load and override configs
 load_config() {
-  trigger 'before:load_config'
-
   # load global config
-  run_locally "source ./config.sh"
+  source ./config.sh
 
   # override with stage specific
-  run_locally "source ./config/${stage}.sh"
+  source ./config/${stage}.sh
 
   # display config info
   echo -e ""
@@ -422,23 +420,23 @@ run_with_tunnel() {
 
 # run command locally
 run_locally() {
-  local command=$@
+  local cmd=$@
 
-  echo -e "[${GREEN}localhost${NC}] Running: ${YELLOW}${command}${NC}"
-  $@
+  echo -e "[${GREEN}localhost${NC}] Running: ${YELLOW}${cmd}${NC}"
+  capture_output "eval $cmd"
 }
 
 # run command on all remote servers
 run_remotely() {
-  local command=$1
+  local cmd=$1
 
   for server in ${servers[@]}; do
-    echo -e "[${BLUE}${server}${NC}] Running: ${YELLOW}${command}${NC}"
+    echo -e "[${BLUE}${server}${NC}] Running: ${YELLOW}${cmd}${NC}"
 
     if ssh_pass_provided; then
-      sshpass -p $SSH_PASS ssh $server $command
+      capture_output "sshpass -p $SSH_PASS ssh $server $cmd"
     else
-      ssh $server $command
+      capture_output "ssh $server $cmd"
     fi
   done
 }
@@ -462,6 +460,13 @@ copy_to_remote() {
 # check if SSH password is supplied as env var
 ssh_pass_provided() {
   if [[ -z ${SSH_PASS+x} || $SSH_PASS == '' ]]; then return 1; else return 0; fi
+}
+
+# capture command output to 'output' variable
+capture_output() {
+  local cmd=$1
+
+  exec 5>&1 && output=$($cmd | tee /dev/fd/5)
 }
 
 # color definitiosn
