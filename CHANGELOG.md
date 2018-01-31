@@ -4,9 +4,28 @@ Bashistrano versions are following [SemVer](http://semver.org).
 
 ## [`master`]
 
-[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.0.0...HEAD
+[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.0...HEAD
 
 * Latest contributions
+
+---
+
+## [`1.1.0`]
+
+[`1.1.0`]: https://github.com/team-supercharge/bashistrano/compare/v1.0.0...v1.1.0
+
+### Breaking changes:
+
+* None
+
+### New features:
+
+* Check Docker image IDs to prevent unnecessary uploading
+* Capture output of `run_locally` and `run_remotely` commands
+
+### Fixes
+
+* None
 
 ---
 
