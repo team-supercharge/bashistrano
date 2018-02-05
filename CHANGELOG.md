@@ -4,9 +4,27 @@ Bashistrano versions are following [SemVer](http://semver.org).
 
 ## [`master`]
 
-[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.0...HEAD
+[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.1...HEAD
 
 * Latest contributions
+
+---
+
+## [`1.1.1`]
+
+[`1.1.1`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.0...v1.1.1
+
+### Breaking changes:
+
+* None
+
+### New features:
+
+* None
+
+### Fixes
+
+* Set proper flags for failing commands to exit Bashistrano
 
 ---
 
