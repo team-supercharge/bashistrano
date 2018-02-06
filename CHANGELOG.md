@@ -4,9 +4,28 @@ Bashistrano versions are following [SemVer](http://semver.org).
 
 ## [`master`]
 
-[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.1...HEAD
+[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.2...HEAD
 
 * Latest contributions
+
+---
+
+## [`1.1.2`]
+
+[`1.1.2`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.1...v1.1.2
+
+### Breaking changes:
+
+* None
+
+### New features:
+
+* None
+
+### Fixes
+
+* Fix image upload checking by running on every node one-by-one
+* Skip pull_images and push_images steps when no images configured
 
 ---
 
