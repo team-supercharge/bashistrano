@@ -263,9 +263,11 @@ load_config() {
   echo -e "    servers = ("
   for server in ${servers[@]}; do echo "      ${server}"; done
   echo -e "    )"
-  echo -e "    images = ("
-  for ((i=0;i<${#images[@]}/2;++i)); do echo -e "      ${images[$i*2]} => ${images[$i*2+1]}"; done
-  echo -e "    }"
+  if images_provided; then
+    echo -e "    images = ("
+    for ((i=0;i<${#images[@]}/2;++i)); do echo -e "      ${images[$i*2]} => ${images[$i*2+1]}"; done
+    echo -e "    }"
+  fi
   echo -e "------------------------------------------------"
   echo -e ""
 
@@ -281,6 +283,9 @@ load_config() {
 
 # store images
 pull_images() {
+  # skip step if no images
+  if ! images_provided; then return 0; fi
+
   trigger 'before:pull_images'
 
   local length=$((${#images[@]}/3))
@@ -305,6 +310,9 @@ pull_images() {
 
 # upload and push images to remote
 push_images() {
+  # skip step if no images
+  if ! images_provided; then return 0; fi
+
   trigger 'before:push_images'
 
   local tmp_images_path="${tmp_path}/${release_id}/images"
@@ -394,6 +402,11 @@ function_exists() {
 # return formatted format if hook exists
 format_function_exists() {
   function_exists $1 && echo "+" || echo " ``"
+}
+
+# check if images are provided
+images_provided() {
+  if [[ -z "${images:=}" ]]; then return 1; else return 0; fi
 }
 
 # trigger hook if exists
