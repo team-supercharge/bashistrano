@@ -320,14 +320,16 @@ push_images() {
     run_locally "docker images -q ${tag_from}"
     local local_image_sha=$output
 
-    run_remotely "docker images -q ${tag_to}"
-    local remote_image_sha=$output
+    for server in ${servers[@]}; do
+      run_on_node $server "docker images -q ${tag_to}"
+      local remote_image_sha=$output
 
-    if [[ $local_image_sha != $remote_image_sha ]]; then
-      copy_to_remote "${local_tmp_path}/images/image-${i}.tar" "$tmp_images_path/image-${i}.tar"
-      run_remotely "docker load -i ${tmp_images_path}/image-${i}.tar"
-      # run_remotely "docker push $tag_to" TODO: need a switch
-    fi
+      if [[ $local_image_sha != $remote_image_sha ]]; then
+        copy_to_node $server "${local_tmp_path}/images/image-${i}.tar" "$tmp_images_path/image-${i}.tar"
+        run_on_node $server "docker load -i ${tmp_images_path}/image-${i}.tar"
+        # run_on_node $server "docker push $tag_to" TODO: need a switch
+      fi
+    done
   done
 
   trigger 'after:push_images'
@@ -441,14 +443,22 @@ run_remotely() {
   local cmd=$1
 
   for server in ${servers[@]}; do
-    echo -e "[${BLUE}${server}${NC}] Running: ${YELLOW}${cmd}${NC}"
-
-    if ssh_pass_provided; then
-      capture_output "sshpass -p $SSH_PASS ssh $server $cmd"
-    else
-      capture_output "ssh $server $cmd"
-    fi
+    run_on_node "$server" "$cmd"
   done
+}
+
+# run command on a single node
+run_on_node() {
+  local server=$1
+  local cmd=$2
+
+  echo -e "[${BLUE}${server}${NC}] Running: ${YELLOW}${cmd}${NC}"
+
+  if ssh_pass_provided; then
+    capture_output "sshpass -p $SSH_PASS ssh $server $cmd"
+  else
+    capture_output "ssh $server $cmd"
+  fi
 }
 
 # copy files to every remote server
@@ -457,14 +467,23 @@ copy_to_remote() {
   local remote_path=$2
 
   for server in ${servers[@]}; do
-    echo -e "[${BLUE}$server${NC}] Copying: ${YELLOW}${file}${NC} to ${YELLOW}${remote_path}${NC}"
-
-    if ssh_pass_provided; then
-      sshpass -p $SSH_PASS scp -r $file $server:$remote_path
-    else
-      scp -r $file $server:$remote_path
-    fi
+    copy_to_node "$server" "$file" "$remote_path"
   done
+}
+
+# copy file to a specific node
+copy_to_node() {
+  local server=$1
+  local file=$2
+  local remote_path=$3
+
+  echo -e "[${BLUE}$server${NC}] Copying: ${YELLOW}${file}${NC} to ${YELLOW}${remote_path}${NC}"
+
+  if ssh_pass_provided; then
+    sshpass -p $SSH_PASS scp -r $file $server:$remote_path
+  else
+    scp -r $file $server:$remote_path
+  fi
 }
 
 # check if SSH password is supplied as env var
