@@ -64,7 +64,7 @@ main() {
     echo "See './bashistrano --help'"
   }
 
-  local command=$1
+  local command=${1:-}
 
   case $command in
   -v|--version)
@@ -107,8 +107,8 @@ deploy() {
     echo ""
   }
 
-  local stage=$1
-  local version=$2
+  local stage=${1:-}
+  local version=${2:-}
 
   case $stage in
   -h|--help|'')
@@ -139,8 +139,8 @@ prepare() {
     echo ""
   }
 
-  local stage=$1
-  local version=$2
+  local stage=${1:-}
+  local version=${2:-}
 
   case $stage in
   -h|--help|'')
@@ -170,8 +170,8 @@ deliver() {
     echo ""
   }
 
-  local stage=$1
-  local version=$2
+  local stage=${1:-}
+  local version=${2:-}
 
   case $stage in
   -h|--help|'')
