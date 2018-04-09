@@ -427,33 +427,31 @@ trigger() {
 }
 
 # open a tunnel and run something there
-run_with_tunnel() {
-  local local_port=$1
-  local server=$2
-  local remote_addr=$3
-  local command=$4
+open_tunnel() {
+  local server=$1
+  local remote_addr=$2
 
-  # open tunnel
-  run_locally "ssh -M -S tunnel -fnNT -L $local_port:$remote_addr $server"
+  # generate random port between 20.000 and 60.000
+  local_port=$((((RANDOM<<15) | RANDOM) % 40001 + 20000))
 
-  # run command
-  run_locally $comand
+  # open tunnel and wait for connections for 10 seconds
+  local command="ssh -f -o ExitOnForwardFailure=yes -L $local_port:$remote_addr $server sleep 10"
 
-  # close tunnel
-  run_locally "ssh -S tunnel -O exit $server"
+  echo_local_command $command
+  eval $command
 }
 
 # run command locally
 run_locally() {
   local cmd=$@
 
-  echo -e "[${GREEN}localhost${NC}] Running: ${YELLOW}${cmd}${NC}"
+  echo_local_command $cmd
   capture_output "eval $cmd"
 }
 
 # run command on all remote servers
 run_remotely() {
-  local cmd=$1
+  local cmd=$@
 
   for server in ${servers[@]}; do
     run_on_node "$server" "$cmd"
@@ -490,7 +488,7 @@ copy_to_node() {
   local file=$2
   local remote_path=$3
 
-  echo -e "[${BLUE}$server${NC}] Copying: ${YELLOW}${file}${NC} to ${YELLOW}${remote_path}${NC}"
+  echo -e "[${BLUE}${server}${NC}] Copying: ${YELLOW}${file}${NC} to ${YELLOW}${remote_path}${NC}"
 
   if ssh_pass_provided; then
     sshpass -p $SSH_PASS scp -r $file $server:$remote_path
@@ -509,6 +507,12 @@ capture_output() {
   local cmd=$1
 
   exec 5>&1 && output=$($cmd | tee /dev/fd/5)
+}
+
+echo_local_command() {
+  local cmd=$@
+
+  echo -e "[${GREEN}localhost${NC}] Running: ${YELLOW}${cmd}${NC}"
 }
 
 # color definitiosn

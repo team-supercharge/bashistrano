@@ -31,6 +31,7 @@ $ ./bashistrano deploy uat v1.0.2
   - [Stage specific hooks](#stage-specific-hooks)
   - [Variables](#variables)
   - [Functions](#functions)
+  - [SSH tunnels](#ssh-tunnels)
 * [Roadmap](#roadmap)
 * [Contributing](#contributing)
 * [Author](#author)
@@ -260,6 +261,7 @@ In addition to the parameters you've explicitly set in the configuration the fol
 | `$current_path` | **remote path** for the currently active release |
 | `$tmp_path` | **remote path** for temporary files (cleaned on `clean_remote` step)
 | `$local_tmp_path` | **local path** for temporary files (cleaned on `clean_local` step)
+| `$local_port` | random **local port** opened after calling the `open_tunnel` function |
 | `$output` | captured standard output of the last invoked function (see [Functions](#functions)) |
 
 ## Functions
@@ -272,7 +274,18 @@ When writing your hooks you can you can leverage the utility functions listed be
 
 `copy_to_remote <local_path> <remote_path>` -- Use `scp` to recursively copy files to **every** remote machine.
 
-`run_with_tunnel <local_port> <server> <remote_addr> <command>` -- Run command locally, but surrounded by opening and closing an SSH tunnel.
+## SSH tunnels
+
+The `open_tunnel` function can be used to [open-close SSH tunnels in a safe way](https://gist.github.com/scy/6781836).
+
+`open_tunnel <server> <remote_addr>` -- Open an SSH tunnel for a random local port which can be accessed through the `$local_port` variable. You script has 10 seconds to open a connection to `$local_port` and after disconnection the SSH tunnel will be automatically terminated.
+
+Let's take the following example: you would like to create a tunnel to access Postgres DB running on `192.168.100.100` port `5432` which is only reachable through `appserver.com`.
+
+```bash
+open_tunnel "appserver.com" "192.168.100.100:5432"
+run_locally "PGPASSWORD=pw psql -h localhost -p $local_port -U user -d db < script.sql"
+```
 
 # Roadmap
 
