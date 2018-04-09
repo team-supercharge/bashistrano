@@ -4,9 +4,28 @@ Bashistrano versions are following [SemVer](http://semver.org).
 
 ## [`master`]
 
-[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.2...HEAD
+[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.3...HEAD
 
 * Latest contributions
+
+---
+
+## [`1.1.3`]
+
+[`1.1.3`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.2...v1.1.3
+
+### Breaking changes:
+
+* None
+
+### New features:
+
+* None
+
+### Fixes
+
+* Avoid unbound variable error in case of empty parameter lists
+* Fix opening SSH tunnels
 
 ---
 
