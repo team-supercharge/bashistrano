@@ -69,7 +69,7 @@ Stage specific configuration takes precedence over the default defined in `confi
 | `application` | application name |
 | `deploy_to` | remote directory for deployments |
 | `keep_releases` | number of releases to keep on remote servers |
-| `servers` | array of remote servers in `user@host` format |
+| `servers` | array of remote servers in `user@host:port` format (default port: 22) |
 | `images` | array of dependent Docker images (see more below) |
 
 ## Stages
@@ -143,7 +143,7 @@ Stage-specific configuration in `config/uat.sh`
 ```bash
 #!/bin/bash -e
 
-servers=( "user@uat-1.server" "user@uat-2.server" )
+servers=( "user@uat-1.server" "user@uat-2.server:2022" )
 ```
 
 # Phases and Steps

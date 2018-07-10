@@ -465,10 +465,14 @@ run_on_node() {
 
   echo -e "[${BLUE}${server}${NC}] Running: ${YELLOW}${cmd}${NC}"
 
+  local host_and_port=($(get_host_and_port $server))
+  local host=${host_and_port[0]}
+  local port=${host_and_port[1]}
+
   if ssh_pass_provided; then
-    capture_output "sshpass -p $SSH_PASS ssh $server $cmd"
+    capture_output "sshpass -p $SSH_PASS ssh -p $port $host $cmd"
   else
-    capture_output "ssh $server $cmd"
+    capture_output "ssh -p $port $host $cmd"
   fi
 }
 
@@ -490,10 +494,14 @@ copy_to_node() {
 
   echo -e "[${BLUE}${server}${NC}] Copying: ${YELLOW}${file}${NC} to ${YELLOW}${remote_path}${NC}"
 
+  local host_and_port=($(get_host_and_port $server))
+  local host=${host_and_port[0]}
+  local port=${host_and_port[1]}
+
   if ssh_pass_provided; then
-    sshpass -p $SSH_PASS scp -r $file $server:$remote_path
+    sshpass -p $SSH_PASS scp -P $port -r $file $host:$remote_path
   else
-    scp -r $file $server:$remote_path
+    scp -P $port -r $file $host:$remote_path
   fi
 }
 
@@ -507,6 +515,28 @@ capture_output() {
   local cmd=$1
 
   exec 5>&1 && output=$($cmd | tee /dev/fd/5)
+}
+
+# extract host and port from <user&host>:<port> format
+get_host_and_port() {
+  local splitted=($(split $server ":"))
+  local host=${splitted[0]}
+
+  if [ ${#splitted[@]} == 1 ]; then
+    local port=22
+  else
+    local port=${splitted[1]}
+  fi
+
+  printf '%s\n' "${host}"
+  printf '%s\n' "${port}"
+}
+
+# split function from: https://github.com/dylanaraps/pure-bash-bible/blob/master/README.md#split-a-string-on-a-delimiter
+split() {
+  # Usage: split "string" "delimiter"
+  IFS=$'\n' read -d "" -ra arr <<< "${1//$2/$'\n'}"
+  printf '%s\n' "${arr[@]}"
 }
 
 echo_local_command() {
