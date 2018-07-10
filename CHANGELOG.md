@@ -4,9 +4,27 @@ Bashistrano versions are following [SemVer](http://semver.org).
 
 ## [`master`]
 
-[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.3...HEAD
+[`master`]: https://github.com/team-supercharge/bashistrano/compare/v1.2.0...HEAD
 
 * Latest contributions
+
+---
+
+## [`1.2.0`]
+
+[`1.2.0`]: https://github.com/team-supercharge/bashistrano/compare/v1.1.3...v1.2.0
+
+### Breaking changes:
+
+* None
+
+### New features:
+
+* Add the ability to specify SSH port for servers
+
+### Fixes
+
+* None
 
 ---
 
